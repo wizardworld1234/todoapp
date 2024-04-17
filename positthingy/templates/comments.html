@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Comments for {{ advisor }} - {{ metric }}</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+    @font-face {
+        font-family: 'Roboto';
+        src: url('/static/fonts/Roboto/Roboto.woff2') format('woff2'),
+            url('/static/fonts/Roboto/Roboto.woff') format('woff'),
+            url('/static/fonts/Roboto/Roboto.ttf') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #e0f2f1;
+            color: #004d40;
+        }
+        h1 {
+            text-align: center;
+            color: #004d40;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background-color: #00796b;
+            color: #e0f2f1;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            padding-top: 20px;
+        }
+        .back-button {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <button onclick="window.history.back()" class="btn btn-primary back-button" style="background-color: #00796b;">Back</button>
+    <h1 style="margin-bottom: 10%;">Comments for {{ advisor }} - {{ metric }}</h1>
+    <ul>
+        {% for comment in comments %}
+        <li>{{ comment.date_stamp }}: {{ comment.comment }}</li>
+        {% endfor %}
+    </ul>
+</div>
+<script src="/static/js/jquery-3.7.1.min.js"></script>
+<script src="/static/js/popper.min.js"></script>
+<script src="/static/js/bootstrap.min.js"></script>
+<link href="/static/css/bootstrap.min.css" rel="stylesheet">
+</body>
+</html>

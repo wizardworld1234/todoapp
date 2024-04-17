@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Data for {{ branch }}</title>
+    <!-- Bootstrap CSS -->
+    <style>
+            @font-face {
+                font-family: 'Roboto';
+                src: url('/static/fonts/Roboto/Roboto.woff2') format('woff2'),
+                    url('/static/fonts/Roboto/Roboto.woff') format('woff'),
+                    url('/static/fonts/Roboto/Roboto.ttf') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+            }
+            .status-incomplete {
+                background-color: #ffe6e6 !important; /* Very light red */
+            }
+            .status-reviewed-no-concerns {
+                background-color: #e6ffe6 !important; /* Very light green */
+            }
+            .status-reviewed-see-notes {
+                background-color: #ffffe6 !important; /* Very light yellow */
+            }
+
+        .roboto-regular {
+            font-family: "Roboto", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            }
+        html, body {
+             height: 100%; /* Make sure the body takes up full height of the viewport */
+        }
+        .container-fluid {
+            min-height: 100%; /* Ensure container takes up minimum full height */
+        }
+        .full-height {
+            height: 100%; /* Additional class if you want to explicitly set elements to full height */
+        }
+        * {
+        font-family: 'Roboto', sans-serif;
+    }
+    form[id^="statusForm"] select {
+        border: 2px solid #004d40; /* Dark green */
+    }
+    table th {
+        color: #004d40; /* Dark green text */
+        border: 2px solid black; /* Black borders */
+        background-color: #e0f2f1; /* Consider a light background for contrast, optional */
+    }
+    .advisor-toggle-row {
+        background-color: #e0f2f1; /* A light, soothing color that matches the theme */
+        cursor: pointer;
+        font-weight: bold;
+        padding: 12px; /* Add more padding for visual space */
+        border-top: 2px solid #004d40; /* Top border to distinguish between sections */
+    }
+
+    .advisor-toggle-row:hover {
+        background-color: #b2dfdb; /* Slightly darker on hover for feedback */
+    }
+
+    .advisor-toggle-icon {
+        float: right; /* Position icon to the right */
+        transition: transform 0.3s ease; /* Smooth transformation on rotate */
+    }
+
+    .collapse.show .advisor-toggle-icon {
+        transform: rotate(180deg); /* Rotate icon when section is expanded */
+    }
+    .advisor-toggle-row .badge {
+    margin-left: 10px; /* Adds some space between the advisor's name and the badge */
+    color: white; /* Sets text color */
+    background-color: #00796b; /* Sets the background color */
+}
+
+    </style>
+</head>
+<script src="/static/js/jquery-3.7.1.min.js"></script>
+<script src="/static/js/popper.min.js"></script>
+<script src="/static/js/bootstrap.min.js"></script>
+<link href="/static/css/bootstrap.min.css" rel="stylesheet">
+<script>
+document.addEventListener('DOMContentLoaded', (event) => {
+    document.querySelectorAll('form[id^="addCommentForm"]').forEach(form => {
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const formId = form.getAttribute('id');
+            const mainDataId = form.querySelector('input[name="main_data_id"]').value;
+            const commentText = form.querySelector('textarea[name="comment"]').value;
+            const response = await fetch('/comments/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    main_data_id: mainDataId,
+                    comment: commentText,
+                    date_stamp: new Date().toISOString(),
+                }),
+            });
+            if (response.ok) {
+                // Close the modal and clear the form using Bootstrap 5 method
+                const modalElement = document.getElementById(`addCommentModal${mainDataId}`);
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                modalInstance.hide();
+                form.reset(); // Clear the form
+                // Optionally, refresh the page or update the UI to show the new comment
+            } else {
+                alert('Failed to add comment');
+            }
+        };
+    });
+});
+    document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('form[id^="statusForm"]').forEach(form => {
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const formId = form.getAttribute('id');
+            const mainDataId = formId.replace('statusForm', '');
+            const status = form.querySelector('select[name="status"]').value;
+            const response = await fetch(`/update-status/${mainDataId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({status: status, refresh_date: new Date().toISOString().split('T')[0]}),
+            });
+            if (response.ok) {
+                alert('Status updated successfully.');
+                // Optionally refresh the page or directly update the status and refresh date in the DOM
+                location.reload();
+            } else {
+                alert('Failed to update status.');
+            }
+        };
+    });
+});
+document.addEventListener('DOMContentLoaded', () => {
+    // Listen for changes on any select element within forms that have an id starting with 'statusForm'
+    document.querySelectorAll('form[id^="statusForm"] select[name="status"]').forEach(selectElement => {
+        selectElement.addEventListener('change', async (e) => {
+            const form = selectElement.closest('form');
+            const mainDataId = form.getAttribute('id').replace('statusForm', '');
+            const status = selectElement.value;
+            const response = await fetch(`/update-status/${mainDataId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({status: status, refresh_date: new Date().toISOString().split('T')[0]}),
+            });
+            if (response.ok) {
+                alert('Status updated successfully.');
+                location.reload();
+            } else {
+                alert('Failed to update status.');
+            }
+        });
+    });
+});
+function applyFilters() {
+    const branchValue = document.getElementById('branchFilter').value;
+    const lobValue = document.getElementById('lobFilter').value;
+    const advisorValue = document.getElementById('advisorFilter').value;
+    const metricValue = document.getElementById('metricFilter').value;
+    const statusValue = document.getElementById('statusFilter').value;
+
+    const queryParams = new URLSearchParams();
+
+    if (advisorValue) queryParams.append('advisor', advisorValue);
+    if (metricValue) queryParams.append('metric', metricValue);
+    if (statusValue) queryParams.append('status', statusValue);
+    if (branchValue) queryParams.append('branch', branchValue);
+    if (lobValue) queryParams.append('lob', lobValue);
+    window.location.href = `/admin?${queryParams}`;
+}
+
+    </script>
+<style>
+    .navbar-toggler-icon {
+    background-image: url('data:image/svg+xml;charset=UTF8,%3Csvg viewBox=\'0 0 30 30\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath stroke=\'rgba(0, 0, 0, 0.5)\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-miterlimit=\'10\' d=\'M4 7h22M4 15h22M4 23h22\'/%3E%3C/svg%3E');
+}
+    a, .btn-link {
+        color: #80cbc4; /* Lighter green for links for readability */
+    }
+    .btn-primary {
+        background-color: #00695c;
+        border-color: #004d40;
+    }
+    .btn-primary:hover {
+        background-color: #004d40;
+        border-color: #00251a;
+    }
+    .btn-info {
+        background-color: #00695c;
+        border-color: #004d40;
+    }
+    .btn-info:hover {
+        background-color: #004d40;
+        border-color: #00251a;
+    }
+    .navbar, .card, .offcanvas, .modal-content {
+        background-color: #00796b; /* Slightly lighter green for these components */
+        color: #e0f2f1;
+    }
+    .navbar a, .offcanvas a, .modal-content a {
+        color: #e0f2f1;
+    }
+    .dark-green-border {
+        border: 2px solid #004d40; /* Dark green border */
+        background-color: #00796b; /* Matching the dark green theme's background */
+        color: #e0f2f1; /* Light green text for contrast */
+    }
+</style>
+<body>
+
+    <nav class="navbar bg-light fixed-top">
+        <div class="container-fluid">
+            <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterMenuOffcanvas" aria-controls="filterMenuOffcanvas">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+          <a class="navbar-brand" style="color: #004d40;">ADMIN</a>
+          <button id="downloadButton" class="btn btn-info" style="color: white;">Download Data</button>
+          <button id="clearFiltersButton" class="btn btn-warning" onclick="window.location.href='/admin';">Clear Filters</button>
+
+        </div>
+      </nav>
+<!-- Hamburger Menu Button -->
+
+
+<!-- Filter Menu Offcanvas -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="filterMenuOffcanvas" aria-labelledby="filterMenuLabel">
+    <div class="offcanvas-header">
+        <h5 id="filterMenuLabel">Filters</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <!-- Your Filter Menu Here -->
+        <div class="form-group">
+            <label for="advisorFilter" style="margin-top: 5%;">Advisor</label>
+            <select class="form-control" id="advisorFilter" style="margin-top: 2%;">
+                <option value="">Select</option>
+                {% for advisor in advisor_options %}
+                <option value="{{ advisor }}">{{ advisor }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="metricFilter" style="margin-top: 5%;">Metric</label>
+            <select class="form-control" id="metricFilter" style="margin-top: 2%;">
+                <option value="">Select</option>
+                {% for metric in metric_options %}
+                <option value="{{ metric }}">{{ metric }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="statusFilter" style="margin-top: 5%;">Status</label>
+            <select class="form-control" id="statusFilter" style="margin-top: 2%;">
+                <option value="">Select</option>
+                {% for status in status_options %}
+                <option value="{{ status }}">{{ status }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="branchFilter" style="margin-top: 5%;">branch</label>
+            <select class="form-control" id="branchFilter" style="margin-top: 2%;">
+                <option value="">Select</option>
+                {% for branch in branch_options %}
+                <option value="{{ branch }}">{{ branch }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="lobFilter" style="margin-top: 5%;">lob</label>
+            <select class="form-control" id="lobFilter" style="margin-top: 2%;">
+                <option value="">Select</option>
+                {% for lob in lob_options %}
+                <option value="{{ lob }}">{{ lob }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <!-- Apply Filters Button -->
+        <button onclick="applyFilters()" class="btn btn-primary" style="margin-top: 10%;background-color: white; color: #004d40;">Apply Filters</button>
+    </div>
+</div>
+
+
+
+    <div class="container mt-5">
+        <br>
+        <div class="row mb-4">
+            <!-- Display status counts -->
+            <div class="col-sm">
+                <div class="card dark-green-border mb-3 status-reviewed-no-concerns" style="text-align: center; color: #004d40;">
+                    <div class="card-header">Reviewed - No Concerns</div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ counts.get('Reviewed - No Concerns', 0) }}</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm">
+                <div class="card dark-green-border mb-3 status-reviewed-see-notes" style="text-align: center; color: #004d40;">
+                    <div class="card-header">Reviewed - See notes</div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ counts.get('Reviewed - See notes', 0) }}</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm">
+                <div class="card dark-green-border mb-3 status-incomplete" style="text-align: center; color: #004d40;">
+                    <div class="card-header">Incomplete</div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ counts.get('Incomplete', 0) }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- The rest of your page content goes here -->
+    </div>
+
+    <div class="table-responsive">
+        <br>
+        <table class="table full-width-table">
+            <thead class="thead-dark" style="text-align: center;">
+                <tr>
+                    <th>Advisor</th> <!-- Moved outside as a group header -->
+                    <th>ID</th>
+                    <th>ACF2</th>
+                    <th>Branch</th>
+                    <th>Metric</th>
+                    <th>Refresh Date</th>
+                    <th>Current</th>
+                    <th>MoM</th>
+                    <th>QoQ</th>
+                    <th>YoY</th>
+                    <th>Action</th>
+                    <th>Procedure</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            {% for advisor, items in data_grouped_by_advisor.items() %}
+            <tbody>
+                <tr class="advisor-toggle-row" data-bs-toggle="collapse" data-bs-target="#collapse{{ advisor }}" aria-expanded="false" aria-controls="collapse{{ advisor }}">
+                    <td colspan="15">
+                        {{ advisor }}
+                        <span class="advisor-toggle-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-down" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+                            </svg>
+                        </span>
+                        <span class="badge bg-secondary">{{ items|length }}</span>
+                    </td>
+                </tr>
+            </tbody>
+            <tbody id="collapse{{ advisor }}" class="collapse show">
+                {% for item in items %}
+                    <tr style="color: #004d40;">
+                        <td></td>
+                        <td>{{ item.id }}</td>
+                        <td>{{ item.acf2 }}</td>
+                        <td>{{ item.branch }}</td>
+                        <td>{{ item.metric }}</td>
+                        <td>{{ item.refresh_date.strftime('%Y-%m-%d') if item.refresh_date else '' }}</td>
+                        <td>{{ item.current_value }}</td>
+                        <td>{{ item.mom }}</td>
+                        <td>{{ item.qoq }}</td>
+                        <td>{{ item.yoy }}</td>
+                        <td>{{ item.action }}</td>
+                        <td>{{ item.procedure }}</td>
+                        <td>
+                            <form id="statusForm{{ item.id }}" class="form-inline">
+                                <select class="form-control {% if item.status == 'Incomplete' %}status-incomplete{% elif item.status == 'Reviewed - No Concerns' %}status-reviewed-no-concerns{% elif item.status == 'Reviewed - See notes' %}status-reviewed-see-notes{% endif %}" name="status">
+                                    <option value="Reviewed - No Concerns" {% if item.status == "Reviewed - No Concerns" %}selected{% endif %}>Reviewed - No Concerns</option>
+                                    <option value="Reviewed - See notes" {% if item.status == "Reviewed - See notes" %}selected{% endif %}>Reviewed - See notes</option>
+                                    <option value="Incomplete" {% if item.status == "Incomplete" %}selected{% endif %}>Incomplete</option>
+                                </select>
+                            </form>
+                        </td>
+                        <td>{{ item.date }}</td>
+                        <td>
+                            <a href="/comments/{{ item.id }}" class="btn btn-info" style="color: white;">View Comments</a>
+                            <!-- Add Comment Button -->
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCommentModal{{ item.id }}">
+                                Add Comment
+                              </button>
+
+                        <!-- Add Comment Modal -->
+                        <div class="modal fade" id="addCommentModal{{ item.id }}" tabindex="-1"  aria-labelledby="addCommentModalLabel{{ item.id }}" aria-hidden="true">
+                            <div class="modal-dialog modal-lg"> <!-- modal-lg or modal-xl for larger size -->
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="addCommentModalLabel{{ item.id }}">Add Comment</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form id="addCommentForm{{ item.id }}">
+                                            <div class="form-group">
+                                                <label for="comment-text{{ item.id }}">Comment:</label>
+                                                <textarea class="form-control" id="comment-text{{ item.id }}" name="comment" rows="6"></textarea>
+                                            </div>
+                                            <input type="hidden" name="main_data_id" value="{{ item.id }}">
+                                            <!-- You can include more form fields if needed -->
+                                        </form>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <button type="submit" class="btn btn-primary" form="addCommentForm{{ item.id }}">Submit Comment</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% endfor %}
+        </table>
+    </div>
+
+<script>
+    document.getElementById('downloadButton').addEventListener('click', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const advisor = urlParams.get('advisor') || '';
+    const metric = urlParams.get('metric') || '';
+    const status = urlParams.get('status') || '';
+    const branch = urlParams.get('branch') || '';
+    const lob = urlParams.get('lob') || '';
+    let queryParams = new URLSearchParams({ advisor, metric, status }).toString();
+    window.location.href = `/download-data-admin?${queryParams}`;
+});
+</script>
+</body>
+</html>
